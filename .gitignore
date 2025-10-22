@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Yarn v4 / Berry
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Yarn PnP files
+.pnp.*
+.yarnrc.yml
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
