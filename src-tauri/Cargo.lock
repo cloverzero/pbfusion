@@ -2530,9 +2530,9 @@ checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "pbf-craft"
-version = "0.9.2"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac64831480998825ee5d89690fbf1adcfba7580daa0d11478a366b769b323ad4"
+checksum = "6f810138d1c520e6fc3f98eabf2ed8c4b764f0440385db7a924ef3aa32357cf8"
 dependencies = [
  "anyhow",
  "base16ct",

@@ -1,15 +1,11 @@
 "use client";
 
 import {
-  IconCamera,
-  IconChartBar,
-  IconDashboard,
-  IconFileAi,
-  IconFileDescription,
+  IconMap,
   IconFolder,
-  IconInnerShadowTop,
-  IconListDetails,
-  IconUsers,
+  IconSettings,
+  IconEqualNot,
+  IconHelp,
 } from "@tabler/icons-react";
 import * as React from "react";
 
@@ -31,29 +27,24 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "#",
-      icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
+      title: "Project",
       url: "#",
       icon: IconFolder,
     },
     {
-      title: "Team",
+      title: "Differences",
       url: "#",
-      icon: IconUsers,
+      icon: IconEqualNot,
+    },
+    {
+      title: "Settings",
+      url: "#",
+      icon: IconSettings,
+    },
+    {
+      title: "Help",
+      url: "#",
+      icon: IconHelp,
     },
   ],
 };
@@ -66,11 +57,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:!p-1"
             >
               <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <IconMap className="!size-6" />
+                <span className="text-base font-semibold">PBFusion</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
