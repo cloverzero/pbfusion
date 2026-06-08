@@ -1,11 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { listen } from "@tauri-apps/api/event";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft, FileText, MapPin, GitBranch, Target, CheckCircle, AlertCircle, Clock,
+  ArrowLeft, GitBranch, CheckCircle, AlertCircle, Target, Clock,
 } from "lucide-react";
 import { DiffsTab } from "@/components/diff-tab";
 import { getProject } from "@/lib/commands";
@@ -47,23 +45,20 @@ function progressPct(total: number, settled: number): number {
   return total > 0 ? Math.round((settled / total) * 100) : 0;
 }
 
-// ── Tab definitions ──
-
-type Tab = "overview" | "diffs";
+function fileName(path: string): string {
+  return path.split("/").pop() || path.split("\\").pop() || path;
+}
 
 // ── Component ──
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const projectId = Number(id);
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const tab = (searchParams.get("tab") as Tab) || "overview";
 
   const loadProject = useCallback(async () => {
     try {
@@ -86,13 +81,6 @@ export default function ProjectPage() {
     });
     return () => { unlisten.then((fn) => fn()); };
   }, [loadProject, projectId]);
-
-  function setTab(t: Tab) {
-    const params = new URLSearchParams(searchParams);
-    if (t === "overview") params.delete("tab");
-    else params.set("tab", t);
-    setSearchParams(params);
-  }
 
   // ── Loading State ──
   if (loading) {
@@ -120,191 +108,114 @@ export default function ProjectPage() {
     );
   }
 
-  return (
-    <div className="mx-8 py-6 flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-1">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Back to Projects">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(project.status)}`}>
-          {statusLabel(project.status)}
-        </span>
-      </div>
-      <p className="text-sm text-muted-foreground ml-11 mb-6">
-        Created {formatDate(project.createdAt)}
-      </p>
-
-      {/* Tab Navigation */}
-      <div className="flex gap-1 mb-6 border-b">
-        <button
-          type="button"
-          onClick={() => setTab("overview")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            tab === "overview"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("diffs")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            tab === "diffs"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Differences
-        </button>
-      </div>
-
-      {tab === "overview" ? (
-        <OverviewTab project={project} />
-      ) : (
-        <DiffsTab projectId={projectId} />
-      )}
-    </div>
-  );
-}
-
-// ── Overview Tab ──
-
-function OverviewTab({ project }: { project: Project }) {
   const unsettled = project.totalDiffs - project.settledDiffs;
   const pct = progressPct(project.totalDiffs, project.settledDiffs);
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={GitBranch}
-          label="Total Diffs"
-          value={project.totalDiffs}
-          color="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          icon={CheckCircle}
-          label="Settled"
-          value={project.settledDiffs}
-          color="text-green-600 dark:text-green-400"
-        />
-        <StatCard
-          icon={AlertCircle}
-          label="Unsettled"
-          value={unsettled}
-          color="text-orange-600 dark:text-orange-400"
-        />
-        <StatCard
-          icon={Target}
-          label="Progress"
-          value={`${pct}%`}
-          color="text-purple-600 dark:text-purple-400"
-        />
-      </div>
-
-      {/* Progress Bar */}
-      {project.totalDiffs > 0 && (
+    <div className="mx-8 py-6 flex flex-col flex-1 min-h-0">
+      {/* ── Header + Stats Row ── */}
+      <div className="flex items-start justify-between mb-3">
+        {/* Left: title + badge + date */}
         <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Overall Progress</span>
-            <span className="font-medium">{pct}%</span>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Back to Projects">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(project.status)}`}>
+              {statusLabel(project.status)}
+            </span>
           </div>
-          <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-            <div
-              className="bg-primary h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <p className="text-sm text-muted-foreground ml-11 mt-0.5">
+            Created {formatDate(project.createdAt)}
+          </p>
         </div>
-      )}
 
-      {/* File Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Source File
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-mono text-muted-foreground break-all">{project.sourcePath}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Target File
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-mono text-muted-foreground break-all">{project.targetPath}</p>
-          </CardContent>
-        </Card>
+        {/* Right: compact stats */}
+        <div className="flex items-center gap-6 pr-2">
+          <MiniStat
+            icon={GitBranch}
+            label="Total"
+            value={project.totalDiffs}
+            color="text-blue-600 dark:text-blue-400"
+          />
+          <MiniStat
+            icon={CheckCircle}
+            label="Settled"
+            value={project.settledDiffs}
+            color="text-green-600 dark:text-green-400"
+          />
+          <MiniStat
+            icon={AlertCircle}
+            label="Unsettled"
+            value={unsettled}
+            color="text-orange-600 dark:text-orange-400"
+          />
+          <MiniStat
+            icon={Target}
+            label="Progress"
+            value={`${pct}%`}
+            color="text-purple-600 dark:text-purple-400"
+          />
+        </div>
       </div>
 
-      {/* Status-specific messaging */}
-      {project.status === "Preparing" && (
-        <Card className="border-yellow-200 dark:border-yellow-800">
-          <CardContent className="py-4 flex items-center gap-3">
-            <Clock className="h-5 w-5 text-yellow-600 animate-spin" />
-            <div>
-              <p className="font-medium">Diff analysis in progress...</p>
-              <p className="text-sm text-muted-foreground">
-                Comparing source and target PBF files. This may take a moment for large files.
-              </p>
+      {/* ── Progress + File Info Row ── */}
+      <div className="mb-4 space-y-2">
+        {/* Progress bar */}
+        {project.totalDiffs > 0 && (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">{pct}%</span>
+          </div>
+        )}
 
-      {project.status === "Completed" && (
-        <Card className="border-green-200 dark:border-green-800">
-          <CardContent className="py-4 flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <div>
-              <p className="font-medium">Merge completed successfully!</p>
-              {project.outputPath && (
-                <p className="text-sm text-muted-foreground font-mono">
-                  Output: {project.outputPath}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* File paths */}
+        <div className="flex gap-6 text-xs text-muted-foreground">
+          <span className="truncate max-w-[45%]" title={project.sourcePath}>
+            <span className="font-medium text-foreground/70">Source:</span>{" "}
+            {fileName(project.sourcePath)}
+          </span>
+          <span className="truncate max-w-[45%]" title={project.targetPath}>
+            <span className="font-medium text-foreground/70">Target:</span>{" "}
+            {fileName(project.targetPath)}
+          </span>
+        </div>
 
-      <Separator />
-
-      {/* Quick Nav */}
-      <div className="text-center">
-        <p className="text-muted-foreground text-sm mb-2">
-          Review and resolve {unsettled} remaining differences
-        </p>
-        <Button onClick={() => {
-          // navigate to diffs tab
-          const url = new URL(window.location.href);
-          url.searchParams.set("tab", "diffs");
-          window.history.pushState({}, "", url.toString());
-          window.dispatchEvent(new PopStateEvent("popstate"));
-        }}>
-          <MapPin className="h-4 w-4" />
-          Go to Differences
-        </Button>
+        {/* Status-specific message */}
+        {project.status === "Preparing" && (
+          <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+            <Clock className="h-4 w-4 animate-spin" />
+            Diff analysis in progress — comparing source and target PBF files...
+          </div>
+        )}
+        {project.status === "Completed" && (
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+            <CheckCircle className="h-4 w-4" />
+            Merge completed successfully
+            {project.outputPath && (
+              <span className="font-mono text-xs opacity-75 ml-1">
+                → {fileName(project.outputPath)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* ── Differences ── */}
+      <DiffsTab projectId={projectId} />
     </div>
   );
 }
 
-// ── Stat Card Helper ──
+// ── Mini Stat ──
 
-function StatCard({
+function MiniStat({
   icon: Icon, label, value, color,
 }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -313,16 +224,12 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card>
-      <CardContent className="py-4 flex items-center gap-3">
-        <Icon className={`h-8 w-8 ${color}`} />
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-2">
+      <Icon className={`h-4 w-4 ${color}`} />
+      <div className="text-right">
+        <p className="text-sm font-bold tabular-nums leading-tight">{value}</p>
+        <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+      </div>
+    </div>
   );
 }
-
-

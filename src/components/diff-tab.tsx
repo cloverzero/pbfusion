@@ -98,7 +98,7 @@ export function DiffsTab({ projectId }: { projectId: number }) {
   const unsettled = diffs.filter((d) => !d.settlement).length;
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 flex-1">
       {/* Filter Toolbar */}
       <Card>
         <CardContent className="py-3">
