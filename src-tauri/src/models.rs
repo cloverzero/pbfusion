@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
     pub id: u32,
@@ -47,11 +47,42 @@ pub struct DiffItem {
     pub result: Option<String>,
 }
 
+impl DiffItem {
+    pub fn sort_key(&self) -> (u8, i64) {
+        (self.element_type.order_key(), self.element_id)
+    }
+
+    /// Deserialize the stored custom element from the `result` field.
+    /// Only valid when settlement is Custom and result is a JSON Element.
+    pub fn get_custom_element(&self) -> Option<pbf_craft::models::Element> {
+        if self.settlement == Some(Settlement::Custom) {
+            if let Some(ref result) = self.result {
+                if let Ok(el) = serde_json::from_str::<pbf_craft::models::Element>(result) {
+                    return Some(el);
+                }
+            }
+        }
+        None
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum ElementType {
     Node,
     Way,
     Relation,
+}
+
+impl ElementType {
+    /// Returns a sort key matching pbf-craft IterableReader iteration order:
+    /// Node(0) → Way(1) → Relation(2)
+    pub fn order_key(&self) -> u8 {
+        match self {
+            ElementType::Node => 0,
+            ElementType::Way => 1,
+            ElementType::Relation => 2,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -61,7 +92,7 @@ pub enum DiffType {
     Modified,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Settlement {
     Source,
     Target,

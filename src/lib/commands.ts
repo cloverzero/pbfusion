@@ -47,3 +47,9 @@ export async function getDiffDetail(
 ): Promise<DiffDetail> {
   return invoke("get_diff_detail", { projectId, diffId });
 }
+
+// ── Merge ──
+
+export async function mergeExport(projectId: number): Promise<Project> {
+  return invoke("merge_export", { projectId });
+}

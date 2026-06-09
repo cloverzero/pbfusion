@@ -76,9 +76,14 @@ pbfusion/
 │   ├── tauri.conf.json           # Tauri config (window 1400×900)
 │   └── src/
 │       ├── main.rs               # Rust entry point
-│       ├── lib.rs                # Tauri command registration + diff analysis core
-│       ├── models.rs             # Data model definitions
-│       └── storage.rs            # JSON file persistence (~/.pbfusion/)
+│       ├── lib.rs                # crate root: module declarations, type conversions, app entry
+│       ├── models.rs             # Data model definitions (Project, DiffItem, enums)
+│       ├── storage.rs            # JSON file persistence (~/.pbfusion/)
+│       └── commands/             # Tauri command implementations
+│           ├── mod.rs            # module declarations
+│           ├── project.rs        # list / get / delete / create_project
+│           ├── diff.rs           # diff analysis, list_diffs, settle_diff, get_diff_detail
+│           └── merge.rs          # merge_export (dual-cursor merge algorithm)
 │
 ├── package.json
 ├── vite.config.ts
@@ -163,6 +168,7 @@ Settled diffs are reflected immediately in the project progress statistics.
 | `list_diffs` | List a project's diffs with optional filtering |
 | `settle_diff` | Settle a diff entry (Source/Target/Custom) |
 | `get_diff_detail` | Get detailed diff data including dependency elements and map coordinates |
+| `merge_export` | Merge source and target PBF into a single output file based on settlement decisions |
 
 ---
 
@@ -198,6 +204,8 @@ All project data is stored under `~/.pbfusion/`:
 - [x] shadcn/ui component library + responsive sidebar
 - [x] Project management (create/delete/search/persist)
 - [x] Dual PBF file diff analysis (merge-sort comparison via pbf-craft IterableReader)
+- [x] Diff filtering and settlement (Source / Target / Custom per diff entry)
+- [x] Merged PBF export with dual-cursor algorithm (pbf-craft PbfWriter)
 - [x] Diff list + filtering + settlement
 - [x] Monaco Editor JSON side-by-side diff
 - [x] MapLibre GL map visualization (Node/Way/Relation geometry extraction and rendering)
@@ -206,10 +214,9 @@ All project data is stored under `~/.pbfusion/`:
 
 ### To Do
 
-- [ ] **Merge export**: Generate a merged PBF file from settlement decisions
+- [x] **Merge export**: Generate a merged PBF file from settlement decisions
 - [ ] **Settings page**: Merge options configuration (conflict resolution strategy, default output path, etc.)
 - [ ] **Help page**: Usage documentation
-- [ ] **Drag & drop**: Drop PBF files onto the window to create projects
 - [ ] **Merge progress**: Progress bar and real-time feedback during export
 - [ ] **Batch settlement**: Select and settle multiple diffs at once
 - [ ] **App icon**: Replace the default Tauri icon

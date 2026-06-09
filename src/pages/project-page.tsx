@@ -3,10 +3,10 @@ import { useParams, useNavigate } from "react-router";
 import { listen } from "@tauri-apps/api/event";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, GitBranch, CheckCircle, AlertCircle, Target, Clock,
+  ArrowLeft, GitBranch, CheckCircle, AlertCircle, Target, Clock, Merge,
 } from "lucide-react";
 import { DiffsTab } from "@/components/diff-tab";
-import { getProject } from "@/lib/commands";
+import { getProject, mergeExport } from "@/lib/commands";
 import type { Project, ProjectUpdated } from "@/lib/types";
 
 // ── Helpers ──
@@ -59,6 +59,7 @@ export default function ProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [merging, setMerging] = useState(false);
 
   const loadProject = useCallback(async () => {
     try {
@@ -81,6 +82,19 @@ export default function ProjectPage() {
     });
     return () => { unlisten.then((fn) => fn()); };
   }, [loadProject, projectId]);
+
+  const handleMerge = async () => {
+    setMerging(true);
+    try {
+      const updated = await mergeExport(projectId);
+      setProject(updated);
+      setError("");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setMerging(false);
+    }
+  };
 
   // ── Loading State ──
   if (loading) {
@@ -131,7 +145,7 @@ export default function ProjectPage() {
           </p>
         </div>
 
-        {/* Right: compact stats */}
+        {/* Right: compact stats + merge action */}
         <div className="flex items-center gap-6 pr-2">
           <MiniStat
             icon={GitBranch}
@@ -157,6 +171,15 @@ export default function ProjectPage() {
             value={`${pct}%`}
             color="text-purple-600 dark:text-purple-400"
           />
+          <Button
+            size="sm"
+            disabled={unsettled > 0 || merging || project.status !== "InProgress"}
+            onClick={handleMerge}
+            className="gap-1.5"
+          >
+            <Merge className="h-4 w-4" />
+            {merging ? "Merging…" : "Merge"}
+          </Button>
         </div>
       </div>
 
