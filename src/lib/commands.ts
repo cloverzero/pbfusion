@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   Project, CreateProjectRequest, DiffItem, DiffFilter,
   SettleDiffRequest, DiffDetail,
+  AppSettings, UpdateSettingsRequest,
 } from "./types";
 
 // ── Projects ──
@@ -52,4 +53,16 @@ export async function getDiffDetail(
 
 export async function mergeExport(projectId: number): Promise<Project> {
   return invoke("merge_export", { projectId });
+}
+
+// ── Settings ──
+
+export async function getSettings(): Promise<AppSettings> {
+  return invoke("get_settings");
+}
+
+export async function updateSettings(
+  request: UpdateSettingsRequest,
+): Promise<AppSettings> {
+  return invoke("update_settings", { request });
 }

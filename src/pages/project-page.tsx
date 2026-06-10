@@ -3,7 +3,13 @@ import { useParams, useNavigate } from "react-router";
 import { listen } from "@tauri-apps/api/event";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, GitBranch, CheckCircle, AlertCircle, Target, Clock, Merge,
+  ArrowLeft,
+  GitBranch,
+  CheckCircle,
+  AlertCircle,
+  Target,
+  Clock,
+  Merge,
 } from "lucide-react";
 import { DiffsTab } from "@/components/diff-tab";
 import { getProject, mergeExport } from "@/lib/commands";
@@ -13,28 +19,42 @@ import type { Project, ProjectUpdated } from "@/lib/types";
 
 function statusLabel(s: string): string {
   switch (s) {
-    case "Preparing": return "Preparing...";
-    case "InProgress": return "In Progress";
-    case "Completed": return "Completed";
-    case "Failed": return "Failed";
-    default: return s;
+    case "Preparing":
+      return "Preparing...";
+    case "InProgress":
+      return "In Progress";
+    case "Completed":
+      return "Completed";
+    case "Failed":
+      return "Failed";
+    default:
+      return s;
   }
 }
 
 function statusColor(s: string): string {
   switch (s) {
-    case "Preparing": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-    case "InProgress": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-    case "Completed": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-    case "Failed": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-    default: return "bg-muted text-muted-foreground";
+    case "Preparing":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "InProgress":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "Completed":
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "Failed":
+      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+    default:
+      return "bg-muted text-muted-foreground";
   }
 }
 
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleString(undefined, {
-      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return iso;
@@ -80,7 +100,9 @@ export default function ProjectPage() {
         loadProject();
       }
     });
-    return () => { unlisten.then((fn) => fn()); };
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [loadProject, projectId]);
 
   const handleMerge = async () => {
@@ -115,7 +137,11 @@ export default function ProjectPage() {
       <div className="mx-8 py-6 text-center">
         <AlertCircle className="h-12 w-12 mx-auto mb-3 text-destructive opacity-50" />
         <p className="text-destructive">{error || "Project not found"}</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate("/")}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => navigate("/")}
+        >
           <ArrowLeft className="h-4 w-4" /> Back to Projects
         </Button>
       </div>
@@ -132,11 +158,20 @@ export default function ProjectPage() {
         {/* Left: title + badge + date */}
         <div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Back to Projects">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/")}
+              title="Back to Projects"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(project.status)}`}>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {project.name}
+            </h1>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(project.status)}`}
+            >
               {statusLabel(project.status)}
             </span>
           </div>
@@ -173,7 +208,7 @@ export default function ProjectPage() {
           />
           <Button
             size="sm"
-            disabled={unsettled > 0 || merging || project.status !== "InProgress"}
+            disabled={unsettled > 0 || merging}
             onClick={handleMerge}
             className="gap-1.5"
           >
@@ -194,7 +229,9 @@ export default function ProjectPage() {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">{pct}%</span>
+            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+              {pct}%
+            </span>
           </div>
         )}
 
@@ -239,7 +276,10 @@ export default function ProjectPage() {
 // ── Mini Stat ──
 
 function MiniStat({
-  icon: Icon, label, value, color,
+  icon: Icon,
+  label,
+  value,
+  color,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -251,7 +291,9 @@ function MiniStat({
       <Icon className={`h-4 w-4 ${color}`} />
       <div className="text-right">
         <p className="text-sm font-bold tabular-nums leading-tight">{value}</p>
-        <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          {label}
+        </p>
       </div>
     </div>
   );

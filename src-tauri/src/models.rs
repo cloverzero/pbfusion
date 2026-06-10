@@ -154,3 +154,35 @@ pub struct DiffDetail {
     pub target: Vec<pbf_craft::models::Element>,
     pub related: Vec<DiffItem>,
 }
+
+// ── App Settings ──
+
+/// Application-level settings stored in ~/.pbfusion/settings.json
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    /// Home directory for storing app data (projects, diffs, settings)
+    pub home_dir: String,
+    /// Default export directory for merged PBF files
+    pub export_dir: String,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
+        Self {
+            home_dir: format!("{}/.pbfusion", home),
+            export_dir: format!("{}/.pbfusion/output", home),
+        }
+    }
+}
+
+/// Settings update request from frontend
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSettingsRequest {
+    pub home_dir: Option<String>,
+    pub export_dir: Option<String>,
+}

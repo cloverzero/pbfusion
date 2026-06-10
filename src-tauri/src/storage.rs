@@ -1,12 +1,57 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::models::{DiffItem, Project};
+use crate::models::{AppSettings, DiffItem, Project};
 
-/// Get the data directory for app storage (~/.pbfusion or platform-equivalent)
+// ──────────────────────────────────────────────
+// Settings file (always at ~/.pbfusion/settings.json)
+// ──────────────────────────────────────────────
+
+fn settings_file() -> PathBuf {
+    let home = dirs_next().unwrap_or_else(|| PathBuf::from("."));
+    home.join(".pbfusion").join("settings.json")
+}
+
+pub fn load_settings() -> std::io::Result<AppSettings> {
+    let path = settings_file();
+    if !path.exists() {
+        return Ok(AppSettings::default());
+    }
+    let content = fs::read_to_string(&path)?;
+    Ok(serde_json::from_str(&content).unwrap_or_default())
+}
+
+pub fn save_settings(settings: &AppSettings) -> std::io::Result<()> {
+    let path = settings_file();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let content = serde_json::to_string_pretty(settings)?;
+    fs::write(&path, content)
+}
+
+// ──────────────────────────────────────────────
+// Data directory (configurable via settings)
+// ──────────────────────────────────────────────
+
 fn data_dir() -> PathBuf {
-    let dir = dirs_next().unwrap_or_else(|| PathBuf::from("."));
-    dir.join(".pbfusion")
+    match load_settings() {
+        Ok(s) => PathBuf::from(&s.home_dir),
+        Err(_) => {
+            let dir = dirs_next().unwrap_or_else(|| PathBuf::from("."));
+            dir.join(".pbfusion")
+        }
+    }
+}
+
+pub fn export_dir() -> PathBuf {
+    match load_settings() {
+        Ok(s) => PathBuf::from(&s.export_dir),
+        Err(_) => {
+            let dir = dirs_next().unwrap_or_else(|| PathBuf::from("."));
+            dir.join(".pbfusion").join("output")
+        }
+    }
 }
 
 fn projects_file() -> PathBuf {

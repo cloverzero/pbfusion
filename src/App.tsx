@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/app-sidebar";
 import ProjectsPage from "./pages/homepage";
 import ProjectPage from "./pages/project-page";
+import SettingsPage from "./pages/settings-page";
 import "./App.css";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route index element={<ProjectsPage />} />
             <Route path="/project/:id" element={<ProjectPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </SidebarInset>
       </SidebarProvider>

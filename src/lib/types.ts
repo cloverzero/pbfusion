@@ -134,3 +134,15 @@ export interface DiffDetail {
   target: OSMElement[];
   related: DiffItem[];
 }
+
+// ─── App Settings ───
+
+export interface AppSettings {
+  homeDir: string;
+  exportDir: string;
+}
+
+export interface UpdateSettingsRequest {
+  homeDir?: string;
+  exportDir?: string;
+}

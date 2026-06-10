@@ -16,15 +16,6 @@ use super::diff::element_key;
 // Merge Export Command
 // ──────────────────────────────────────────────
 
-fn merge_output_dir() -> std::path::PathBuf {
-    let dir = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_else(|_| ".".to_string());
-    std::path::PathBuf::from(dir)
-        .join(".pbfusion")
-        .join("output")
-}
-
 #[tauri::command]
 pub fn merge_export(app: tauri::AppHandle, project_id: u32) -> Result<Project, String> {
     // 1. Load project and diffs
@@ -65,7 +56,7 @@ pub fn merge_export(app: tauri::AppHandle, project_id: u32) -> Result<Project, S
         .map_err(|e| format!("Failed to open target PBF: {}", e))?;
 
     // 5. Prepare writer
-    let out_dir = merge_output_dir().join(project_id.to_string());
+    let out_dir = storage::export_dir().join(project_id.to_string());
     fs::create_dir_all(&out_dir)
         .map_err(|e| format!("Failed to create output directory: {}", e))?;
     let output_path = out_dir.join("merged.pbf");
