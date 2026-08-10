@@ -45,6 +45,10 @@ pub struct DiffItem {
     pub diff_type: DiffType,
     pub settlement: Option<Settlement>,
     pub result: Option<String>,
+    /// Author (OSM user name) of the element in the source PBF, when present.
+    pub source_author: Option<String>,
+    /// Author (OSM user name) of the element in the target PBF, when present.
+    pub target_author: Option<String>,
 }
 
 impl DiffItem {

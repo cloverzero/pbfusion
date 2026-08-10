@@ -180,6 +180,8 @@ export function DiffsTab({ projectId }: { projectId: number }) {
                 <TableRow>
                   <TableHead className="w-[80px]">Type</TableHead>
                   <TableHead>Element ID</TableHead>
+                  <TableHead className="w-[120px]">Source Author</TableHead>
+                  <TableHead className="w-[120px]">Target Author</TableHead>
                   <TableHead className="w-[100px]">Diff</TableHead>
                   <TableHead className="w-[110px]">Settlement</TableHead>
                   <TableHead className="w-[80px]" />
@@ -195,6 +197,12 @@ export function DiffsTab({ projectId }: { projectId: number }) {
                   >
                     <TableCell className="font-mono text-xs">{d.elementType}</TableCell>
                     <TableCell className="font-mono text-xs">{d.elementId}</TableCell>
+                    <TableCell className="text-xs truncate max-w-[120px]">
+                      {d.sourceAuthor ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs truncate max-w-[120px]">
+                      {d.targetAuthor ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${diffTypeColor(d.diffType)}`}>
                         {d.diffType}

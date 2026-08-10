@@ -45,6 +45,8 @@ pub(crate) async fn run_diff_analysis(
                         diff_type: DiffType::Removed,
                         settlement: None,
                         result: None,
+                        source_author: element_author(&el),
+                        target_author: None,
                     });
                     diff_id += 1;
                     source_next = source_iter.next();
@@ -61,6 +63,8 @@ pub(crate) async fn run_diff_analysis(
                         diff_type: DiffType::Added,
                         settlement: None,
                         result: None,
+                        source_author: None,
+                        target_author: element_author(&el),
                     });
                     diff_id += 1;
                     target_next = target_iter.next();
@@ -81,6 +85,8 @@ pub(crate) async fn run_diff_analysis(
                                 diff_type: DiffType::Modified,
                                 settlement: None,
                                 result: None,
+                                source_author: element_author(src_el),
+                                target_author: element_author(tgt_el),
                             });
                             diff_id += 1;
                         }
@@ -96,6 +102,8 @@ pub(crate) async fn run_diff_analysis(
                             diff_type: DiffType::Removed,
                             settlement: None,
                             result: None,
+                            source_author: element_author(src_el),
+                            target_author: None,
                         });
                         diff_id += 1;
                         source_next = source_iter.next();
@@ -109,6 +117,8 @@ pub(crate) async fn run_diff_analysis(
                             diff_type: DiffType::Added,
                             settlement: None,
                             result: None,
+                            source_author: None,
+                            target_author: element_author(tgt_el),
                         });
                         diff_id += 1;
                         target_next = target_iter.next();
@@ -163,6 +173,16 @@ fn element_order(el: &Element) -> (u8, i64) {
         Element::Way(w) => (1, w.id),
         Element::Relation(r) => (2, r.id),
     }
+}
+
+/// Extract the author (OSM user name) of an element, if present.
+fn element_author(el: &Element) -> Option<String> {
+    let user = match el {
+        Element::Node(n) => n.user.as_ref(),
+        Element::Way(w) => w.user.as_ref(),
+        Element::Relation(r) => r.user.as_ref(),
+    };
+    user.map(|u| u.name.clone())
 }
 
 fn elements_equal(a: &Element, b: &Element) -> bool {

@@ -32,6 +32,8 @@ export interface DiffItem {
   diffType: DiffType;
   settlement?: Settlement;
   result?: string;
+  sourceAuthor?: string;
+  targetAuthor?: string;
 }
 
 export interface CreateProjectRequest {
