@@ -73,6 +73,12 @@ export interface DiffFilter {
   elementId?: number;
 }
 
+/** Paginated diff list result (`list_diffs`). */
+export interface PagedDiffItems {
+  data: DiffItem[];
+  total: number;
+}
+
 export interface SettleDiffRequest {
   settlement: string;
   result?: string;

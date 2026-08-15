@@ -54,36 +54,64 @@ function settlementLabel(s?: string): string {
   return s || "Unsettled";
 }
 
+/**
+ * Build a compact page-number list with ellipses for large page counts.
+ * E.g. (1..20, current 3) → [1, 2, 3, 4, 5, "…", 20]
+ */
+function pageNumbers(current: number, total: number): (number | "…")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push("…");
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < total - 1) pages.push("…");
+  pages.push(total);
+  return pages;
+}
+
 // ── DiffsTab ──
+
+const PAGE_SIZES = [50, 100, 200, 500];
 
 export function DiffsTab({ projectId }: { projectId: number }) {
   const [diffs, setDiffs] = useState<DiffItem[]>([]);
   const [filter, setFilter] = useState<DiffFilter>({});
   const [selectedDiffId, setSelectedDiffId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+  const [total, setTotal] = useState(0);
 
   const loadDiffs = useCallback(async () => {
     try {
-      const list = await listDiffs(projectId, filter);
-      setDiffs(list);
+      const result = await listDiffs(projectId, filter, page, pageSize);
+      setDiffs(result.data);
+      setTotal(result.total);
     } catch (e) {
       console.error("Failed to load diffs:", e);
     } finally {
       setLoading(false);
     }
-  }, [projectId, filter]);
+  }, [projectId, filter, page, pageSize]);
 
   useEffect(() => {
     loadDiffs();
   }, [loadDiffs]);
 
+  // When filters change, reset to the first page.
   function updateFilter<K extends keyof DiffFilter>(key: K, value: DiffFilter[K]) {
     setFilter((prev) => {
       const next = { ...prev, [key]: value || undefined };
       if (key === "elementId" && !value) delete next.elementId;
       return next;
     });
+    setPage(1);
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   if (loading) {
     return (
@@ -159,7 +187,7 @@ export function DiffsTab({ projectId }: { projectId: number }) {
             </div>
 
             <div className="ml-auto text-sm text-muted-foreground">
-              {diffs.length} diffs · {unsettled} unsettled
+              {total} diffs · {unsettled} unsettled on this page
             </div>
           </div>
         </CardContent>
@@ -222,6 +250,72 @@ export function DiffsTab({ projectId }: { projectId: number }) {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {total > 0 && (
+            <div className="flex items-center justify-between px-2 py-2 border-t">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {total} diffs · {unsettled} unsettled on this page
+                </span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => {
+                    setPageSize(Number(v));
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-24 h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZES.map((s) => (
+                      <SelectItem key={s} value={String(s)}>
+                        {s}/page
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                {pageNumbers(page, totalPages).map((p, i) =>
+                  p === "…" ? (
+                    <span key={`e-${i}`} className="px-1 text-xs text-muted-foreground">
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 min-w-7 px-1.5 text-xs"
+                      onClick={() => setPage(p as number)}
+                    >
+                      {p}
+                    </Button>
+                  ),
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 

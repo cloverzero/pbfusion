@@ -181,8 +181,13 @@ All project data is stored under `~/.pbfusion/`:
 ├── projects.json           # Project list
 └── diffs/
     └── {project_id}/
-        └── diffs.json      # Diff entries for that project
+        └── diffs.db        # Diff entries, stored in a per-project SQLite database
 ```
+
+> Diff entries live in a per-project SQLite database (`diffs.db`) to support indexed
+> filtering, single-row settlement updates, and pagination on large diff sets.
+> Older projects created before this change stored diffs in `diffs.json`; those are not
+> migrated — recreate the project to re-run diff analysis.
 
 ---
 

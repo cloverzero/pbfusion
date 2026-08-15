@@ -8,7 +8,7 @@ use pbf_craft::writers::PbfWriter;
 use tauri::Emitter;
 
 use crate::background::{BackgroundTaskKind, BackgroundTaskState};
-use crate::models::{DiffItem, Project, ProjectStatus, Settlement};
+use crate::models::{DiffFilter, DiffItem, Project, ProjectStatus, Settlement};
 use crate::storage;
 
 use super::diff::element_key;
@@ -39,22 +39,41 @@ pub fn merge_export(
         .ok_or_else(|| format!("Project {} not found", project_id))?
         .clone();
 
-    let diffs = storage::load_diffs(project_id).map_err(|e| e.to_string())?;
+    let unsettled = storage::count_diffs(
+        project_id,
+        &DiffFilter {
+            element_type: None,
+            diff_type: None,
+            only_unsettled: Some(true),
+            element_id: None,
+        },
+    )
+    .map_err(|e| e.to_string())?;
 
     // 2. Guard: every diff must be settled
-    let unsettled: Vec<&DiffItem> = diffs.iter().filter(|d| d.settlement.is_none()).collect();
-    if !unsettled.is_empty() {
+    if unsettled > 0 {
+        let first = storage::first_unsettled_diff(project_id).map_err(|e| e.to_string())?;
+        let detail = match first {
+            Some(d) => format!(
+                "diff#{}, element_type={:?}, element_id={}",
+                d.id, d.element_type, d.element_id
+            ),
+            None => "unknown".to_string(),
+        };
         return Err(format!(
             "Project has {} unsettled diff(s); settle all diffs before merging. \
-             First unsettled: diff#{}, element_type={:?}, element_id={}",
-            unsettled.len(),
-            unsettled[0].id,
-            unsettled[0].element_type,
-            unsettled[0].element_id,
+             First unsettled: {}",
+            unsettled, detail,
         ));
     }
 
-    if diffs.is_empty() {
+    let empty_filter = DiffFilter {
+        element_type: None,
+        diff_type: None,
+        only_unsettled: None,
+        element_id: None,
+    };
+    if storage::count_diffs(project_id, &empty_filter).map_err(|e| e.to_string())? == 0 {
         return Err("No diffs to merge".into());
     }
 
@@ -96,11 +115,9 @@ fn run_merge(app: &tauri::AppHandle, project_id: u32) -> Result<Project, String>
         .ok_or_else(|| format!("Project {} not found", project_id))?
         .clone();
 
-    let diffs = storage::load_diffs(project_id).map_err(|e| e.to_string())?;
-
-    // 2. Sort diffs
-    let mut sorted_diffs = diffs;
-    sorted_diffs.sort_by_key(|d| d.sort_key());
+    // Diffs are stored ordered by id, which equals the analysis order (the merge output
+    // order), so no extra sorting is needed.
+    let sorted_diffs = storage::load_all_diffs(project_id).map_err(|e| e.to_string())?;
     let total_diffs = sorted_diffs.len();
 
     // 3. Open readers

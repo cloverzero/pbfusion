@@ -4,8 +4,8 @@ use pbf_craft::readers::{IndexedReader, IterableReader};
 use tauri::Emitter;
 
 use crate::models::{
-    DiffDetail, DiffFilter, DiffItem, DiffType, ElementType, ProjectStatus, Settlement,
-    SettleDiffRequest,
+    DiffDetail, DiffFilter, DiffItem, DiffType, ElementType, PagedData, ProjectStatus,
+    Settlement, SettleDiffRequest,
 };
 use crate::storage;
 
@@ -226,52 +226,67 @@ fn elements_equal(a: &Element, b: &Element) -> bool {
 // Diff List & Settlement Commands
 // ──────────────────────────────────────────────
 
-#[tauri::command]
-pub fn list_diffs(project_id: u32, filter: Option<DiffFilter>) -> Result<Vec<DiffItem>, String> {
-    let diffs = storage::load_diffs(project_id).map_err(|e| e.to_string())?;
-    if let Some(f) = filter {
-        let diffs: Vec<DiffItem> = diffs
-            .into_iter()
-            .filter(|d| {
-                if let Some(ref et) = f.element_type {
-                    let et_lower = et.to_lowercase();
-                    let want = match et_lower.as_str() {
-                        "node" => ElementType::Node,
-                        "way" => ElementType::Way,
-                        "relation" => ElementType::Relation,
-                        _ => return true,
-                    };
-                    if d.element_type != want {
-                        return false;
-                    }
-                }
-                if let Some(ref dt) = f.diff_type {
-                    let dt_lower = dt.to_lowercase();
-                    let want = match dt_lower.as_str() {
-                        "added" => DiffType::Added,
-                        "removed" => DiffType::Removed,
-                        "modified" => DiffType::Modified,
-                        _ => return true,
-                    };
-                    if d.diff_type != want {
-                        return false;
-                    }
-                }
-                if f.only_unsettled.unwrap_or(false) && d.settlement.is_some() {
-                    return false;
-                }
-                if let Some(eid) = f.element_id {
-                    if d.element_id != eid {
-                        return false;
-                    }
-                }
-                true
-            })
-            .collect();
-        Ok(diffs)
-    } else {
-        Ok(diffs)
+const DEFAULT_PAGE_SIZE: u32 = 100;
+const MAX_PAGE_SIZE: u32 = 1000;
+
+/// Normalize a frontend filter value ("node" / "way" / "relation", case-insensitive) into the
+/// canonical stored form ("Node" / "Way" / "Relation").
+fn normalize_element_type(v: &str) -> Option<&'static str> {
+    match v.to_lowercase().as_str() {
+        "node" => Some("Node"),
+        "way" => Some("Way"),
+        "relation" => Some("Relation"),
+        _ => None,
     }
+}
+
+/// Normalize a frontend diff-type value ("added" / "removed" / "modified") into the canonical
+/// stored form ("Added" / "Removed" / "Modified").
+fn normalize_diff_type(v: &str) -> Option<&'static str> {
+    match v.to_lowercase().as_str() {
+        "added" => Some("Added"),
+        "removed" => Some("Removed"),
+        "modified" => Some("Modified"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+pub fn list_diffs(
+    project_id: u32,
+    filter: Option<DiffFilter>,
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> Result<PagedData<DiffItem>, String> {
+    let mut filter = filter.unwrap_or(DiffFilter {
+        element_type: None,
+        diff_type: None,
+        only_unsettled: None,
+        element_id: None,
+    });
+    // Normalize enum filters to the canonical stored casing.
+    filter.element_type = filter
+        .element_type
+        .as_deref()
+        .and_then(normalize_element_type)
+        .map(String::from);
+    filter.diff_type = filter
+        .diff_type
+        .as_deref()
+        .and_then(normalize_diff_type)
+        .map(String::from);
+
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(DEFAULT_PAGE_SIZE).clamp(1, MAX_PAGE_SIZE);
+    let offset = ((page - 1) as i64) * (page_size as i64);
+
+    let (items, total) =
+        storage::list_diffs_page(project_id, &filter, page_size as i64, offset)
+            .map_err(|e| e.to_string())?;
+    Ok(PagedData {
+        data: items,
+        total,
+    })
 }
 
 #[tauri::command]
@@ -281,27 +296,25 @@ pub fn settle_diff(
     diff_id: u32,
     request: SettleDiffRequest,
 ) -> Result<(), String> {
-    let mut diffs = storage::load_diffs(project_id).map_err(|e| e.to_string())?;
-    let diff = diffs
-        .iter_mut()
-        .find(|d| d.id == diff_id)
-        .ok_or_else(|| format!("Diff {} not found in project {}", diff_id, project_id))?;
-
-    diff.settlement = match request.settlement.as_str() {
-        "Source" => Some(Settlement::Source),
-        "Target" => Some(Settlement::Target),
-        "Custom" => Some(Settlement::Custom),
+    let settlement = match request.settlement.as_str() {
+        "Source" => Settlement::Source,
+        "Target" => Settlement::Target,
+        "Custom" => Settlement::Custom,
         _ => return Err(format!("Invalid settlement: {}", request.settlement)),
     };
-    if let Some(result) = request.result {
-        diff.result = Some(result);
+
+    // Verify the diff exists before updating.
+    let existing = storage::get_diff(project_id, diff_id).map_err(|e| e.to_string())?;
+    if existing.is_none() {
+        return Err(format!("Diff {} not found in project {}", diff_id, project_id));
     }
 
-    storage::save_diffs(project_id, &diffs).map_err(|e| e.to_string())?;
+    storage::update_diff_settlement(project_id, diff_id, Some(settlement), request.result)
+        .map_err(|e| e.to_string())?;
 
+    let settled = storage::count_settled_diffs(project_id).map_err(|e| e.to_string())?;
     let projects = storage::load_projects().map_err(|e| e.to_string())?;
     if let Some(mut p) = projects.into_iter().find(|p| p.id == project_id) {
-        let settled = diffs.iter().filter(|d| d.settlement.is_some()).count() as u32;
         p.settled_diffs = settled;
         p.updated_at = Utc::now();
         storage::update_project(&p).map_err(|e| e.to_string())?;
@@ -313,12 +326,9 @@ pub fn settle_diff(
 
 #[tauri::command]
 pub fn get_diff_detail(project_id: u32, diff_id: u32) -> Result<DiffDetail, String> {
-    let diffs = storage::load_diffs(project_id).map_err(|e| e.to_string())?;
-    let diff = diffs
-        .iter()
-        .find(|d| d.id == diff_id)
-        .ok_or_else(|| format!("Diff {} not found in project {}", diff_id, project_id))?
-        .clone();
+    let diff = storage::get_diff(project_id, diff_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Diff {} not found in project {}", diff_id, project_id))?;
 
     let projects = storage::load_projects().map_err(|e| e.to_string())?;
     let project = projects

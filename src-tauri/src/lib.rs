@@ -1,7 +1,7 @@
 mod background;
 mod commands;
-mod models;
-mod storage;
+pub mod models;
+pub mod storage;
 
 use background::BackgroundTaskState;
 use models::ElementType;
