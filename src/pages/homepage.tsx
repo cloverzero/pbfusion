@@ -61,15 +61,35 @@ export default function ProjectsPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  // projectId -> analysis percent (0-100), for Preparing projects
+  const [analysisProgress, setAnalysisProgress] = useState<Record<number, number>>({});
 
   // Load projects on mount and listen for updates
   useEffect(() => {
     refreshProjects();
 
-    const unlisten = listen<DiffProgress>("project-updated", () => {
+    const unlistenUpdated = listen("project-updated", () => {
       refreshProjects();
     });
-    return () => { unlisten.then((fn) => fn()); };
+    const unlistenProgress = listen<DiffProgress>("diff-progress", (event) => {
+      if (typeof event.payload.percent === "number") {
+        setAnalysisProgress((prev) => ({
+          ...prev,
+          [event.payload.projectId]: event.payload.percent as number,
+        }));
+      }
+      if (event.payload.status === "InProgress" || event.payload.status === "Failed") {
+        setAnalysisProgress((prev) => {
+          const next = { ...prev };
+          delete next[event.payload.projectId];
+          return next;
+        });
+      }
+    });
+    return () => {
+      unlistenUpdated.then((fn) => fn());
+      unlistenProgress.then((fn) => fn());
+    };
   }, []);
 
   async function refreshProjects() {
@@ -265,6 +285,13 @@ export default function ProjectsPage() {
                   <span className="block text-xs">
                     {fileName(p.sourcePath)} → {fileName(p.targetPath)}
                   </span>
+                  {p.status === "Preparing" && (
+                    <span className="block text-xs mt-1">
+                      {analysisProgress[p.id] !== undefined
+                        ? `Analyzing… ${Math.round(analysisProgress[p.id])}%`
+                        : "Analyzing…"}
+                    </span>
+                  )}
                   {p.status === "InProgress" && (
                     <span className="block text-xs mt-1">
                       {p.settledDiffs}/{p.totalDiffs} settled ({progressPct(p.totalDiffs, p.settledDiffs)}%)
@@ -273,6 +300,16 @@ export default function ProjectsPage() {
                   <span className="block text-xs mt-1 opacity-60">
                     {formatDate(p.updatedAt)}
                   </span>
+                  {p.status === "Preparing" && analysisProgress[p.id] !== undefined && (
+                    <span className="block mt-1.5">
+                      <span className="block h-1.5 bg-muted rounded-full overflow-hidden">
+                        <span
+                          className="block h-full bg-yellow-500 rounded-full transition-all duration-300"
+                          style={{ width: `${analysisProgress[p.id]}%` }}
+                        />
+                      </span>
+                    </span>
+                  )}
                 </ItemDescription>
               </ItemContent>
               <ItemActions>

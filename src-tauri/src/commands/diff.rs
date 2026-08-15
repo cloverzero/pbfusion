@@ -13,6 +13,9 @@ use crate::storage;
 // Diff Analysis
 // ──────────────────────────────────────────────
 
+/// How often (in milliseconds) a `diff-progress` event may be emitted at most.
+const PROGRESS_EMIT_INTERVAL_MS: u128 = 250;
+
 pub(crate) async fn run_diff_analysis(
     app: tauri::AppHandle,
     project_id: u32,
@@ -30,6 +33,8 @@ pub(crate) async fn run_diff_analysis(
 
     let mut source_next = source_iter.next();
     let mut target_next = target_iter.next();
+
+    let mut last_progress_emit = std::time::Instant::now();
 
     loop {
         match (&source_next, &target_next) {
@@ -126,6 +131,28 @@ pub(crate) async fn run_diff_analysis(
                 }
             }
         }
+
+        // Throttled progress sampling: emit at most every PROGRESS_EMIT_INTERVAL_MS.
+        if last_progress_emit.elapsed().as_millis() >= PROGRESS_EMIT_INTERVAL_MS {
+            let sp = source_iter.progress();
+            let tp = target_iter.progress();
+            let total = sp.total_bytes.unwrap_or(0) + tp.total_bytes.unwrap_or(0);
+            let read = sp.bytes_read + tp.bytes_read;
+            let percent = if total > 0 {
+                (read as f64 / total as f64) * 100.0
+            } else {
+                0.0
+            };
+            let _ = app.emit(
+                "diff-progress",
+                serde_json::json!({
+                    "projectId": project_id,
+                    "percent": percent,
+                    "status": "Preparing"
+                }),
+            );
+            last_progress_emit = std::time::Instant::now();
+        }
     }
 
     let total = diffs.len() as u32;
@@ -137,6 +164,7 @@ pub(crate) async fn run_diff_analysis(
             "projectId": project_id,
             "total": total,
             "settled": 0,
+            "percent": 100.0,
             "status": "InProgress"
         }),
     );

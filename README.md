@@ -40,7 +40,7 @@
 | Layer | Technology |
 |---|---|
 | Desktop Framework | Tauri 2 |
-| PBF Processing | pbf-craft 0.10 + protobuf + flate2 |
+| PBF Processing | pbf-craft 1.0.1 + protobuf + flate2 |
 | Serialization | serde + serde_json |
 | Date/Time | chrono |
 | Error Handling | anyhow + thiserror |

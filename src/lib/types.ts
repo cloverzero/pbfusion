@@ -44,9 +44,22 @@ export interface CreateProjectRequest {
 
 export interface DiffProgress {
   projectId: number;
-  total: number;
-  settled: number;
+  /** 0-100 analysis progress (present during analysis). */
+  percent?: number;
+  total?: number;
+  settled?: number;
   status: string;
+}
+
+/** Progress payload for the background merge task (`merge-progress` event). */
+export interface MergeProgress {
+  projectId: number;
+  /** 0-100 merge progress. */
+  percent: number;
+  processedDiffs?: number;
+  totalDiffs?: number;
+  status: "Merging" | "Completed" | "Failed";
+  message?: string;
 }
 
 export interface ProjectUpdated {

@@ -51,7 +51,8 @@ export async function getDiffDetail(
 
 // ── Merge ──
 
-export async function mergeExport(projectId: number): Promise<Project> {
+/** Starts the merge as a background task; progress arrives via `merge-progress` events. */
+export async function mergeExport(projectId: number): Promise<void> {
   return invoke("merge_export", { projectId });
 }
 
