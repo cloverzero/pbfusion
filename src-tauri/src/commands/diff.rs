@@ -16,6 +16,11 @@ use crate::storage;
 /// How often (in milliseconds) a `diff-progress` event may be emitted at most.
 const PROGRESS_EMIT_INTERVAL_MS: u128 = 250;
 
+/// Diffs are flushed to SQLite in batches of this size to keep the in-memory buffer bounded
+/// (each `DiffItem` is roughly 100-200 bytes, so a batch is ~1-2 MB) and to spread write I/O
+/// across the scan instead of one giant transaction at the end.
+const DIFF_FLUSH_BATCH_SIZE: usize = 10_000;
+
 pub(crate) async fn run_diff_analysis(
     app: tauri::AppHandle,
     project_id: u32,
@@ -30,11 +35,40 @@ pub(crate) async fn run_diff_analysis(
 
     let mut diffs: Vec<DiffItem> = Vec::new();
     let mut diff_id: u32 = 1;
+    let mut total_diffs: u32 = 0;
 
     let mut source_next = source_iter.next();
     let mut target_next = target_iter.next();
 
     let mut last_progress_emit = std::time::Instant::now();
+
+    // Push one diff; when the buffer reaches the batch size, flush to SQLite and clear it.
+    // This keeps the in-memory buffer bounded and spreads writes across the scan.
+    let mut push_diff = |element_type: ElementType,
+                         element_id: i64,
+                         diff_type: DiffType,
+                         source_author: Option<String>,
+                         target_author: Option<String>|
+     -> anyhow::Result<()> {
+        diffs.push(DiffItem {
+            id: diff_id,
+            project_id,
+            element_type,
+            element_id,
+            diff_type,
+            settlement: None,
+            result: None,
+            source_author,
+            target_author,
+        });
+        diff_id += 1;
+        if diffs.len() >= DIFF_FLUSH_BATCH_SIZE {
+            total_diffs += diffs.len() as u32;
+            storage::insert_diffs_batch(project_id, &diffs)?;
+            diffs.clear();
+        }
+        Ok(())
+    };
 
     loop {
         match (&source_next, &target_next) {
@@ -42,36 +76,14 @@ pub(crate) async fn run_diff_analysis(
             (Some(_), None) => {
                 while let Some(el) = source_next {
                     let (et, eid) = element_key(&el);
-                    diffs.push(DiffItem {
-                        id: diff_id,
-                        project_id,
-                        element_type: et,
-                        element_id: eid,
-                        diff_type: DiffType::Removed,
-                        settlement: None,
-                        result: None,
-                        source_author: element_author(&el),
-                        target_author: None,
-                    });
-                    diff_id += 1;
+                    push_diff(et, eid, DiffType::Removed, element_author(&el), None)?;
                     source_next = source_iter.next();
                 }
             }
             (None, Some(_)) => {
                 while let Some(el) = target_next {
                     let (et, eid) = element_key(&el);
-                    diffs.push(DiffItem {
-                        id: diff_id,
-                        project_id,
-                        element_type: et,
-                        element_id: eid,
-                        diff_type: DiffType::Added,
-                        settlement: None,
-                        result: None,
-                        source_author: None,
-                        target_author: element_author(&el),
-                    });
-                    diff_id += 1;
+                    push_diff(et, eid, DiffType::Added, None, element_author(&el))?;
                     target_next = target_iter.next();
                 }
             }
@@ -82,50 +94,35 @@ pub(crate) async fn run_diff_analysis(
                 match (src_type, tgt_type) {
                     _ if src_type == tgt_type && src_id == tgt_id => {
                         if !elements_equal(src_el, tgt_el) {
-                            diffs.push(DiffItem {
-                                id: diff_id,
-                                project_id,
-                                element_type: src_type,
-                                element_id: src_id,
-                                diff_type: DiffType::Modified,
-                                settlement: None,
-                                result: None,
-                                source_author: element_author(src_el),
-                                target_author: element_author(tgt_el),
-                            });
-                            diff_id += 1;
+                            push_diff(
+                                src_type,
+                                src_id,
+                                DiffType::Modified,
+                                element_author(src_el),
+                                element_author(tgt_el),
+                            )?;
                         }
                         source_next = source_iter.next();
                         target_next = target_iter.next();
                     }
                     _ if element_order(src_el) < element_order(tgt_el) => {
-                        diffs.push(DiffItem {
-                            id: diff_id,
-                            project_id,
-                            element_type: src_type,
-                            element_id: src_id,
-                            diff_type: DiffType::Removed,
-                            settlement: None,
-                            result: None,
-                            source_author: element_author(src_el),
-                            target_author: None,
-                        });
-                        diff_id += 1;
+                        push_diff(
+                            src_type,
+                            src_id,
+                            DiffType::Removed,
+                            element_author(src_el),
+                            None,
+                        )?;
                         source_next = source_iter.next();
                     }
                     _ => {
-                        diffs.push(DiffItem {
-                            id: diff_id,
-                            project_id,
-                            element_type: tgt_type,
-                            element_id: tgt_id,
-                            diff_type: DiffType::Added,
-                            settlement: None,
-                            result: None,
-                            source_author: None,
-                            target_author: element_author(tgt_el),
-                        });
-                        diff_id += 1;
+                        push_diff(
+                            tgt_type,
+                            tgt_id,
+                            DiffType::Added,
+                            None,
+                            element_author(tgt_el),
+                        )?;
                         target_next = target_iter.next();
                     }
                 }
@@ -155,9 +152,15 @@ pub(crate) async fn run_diff_analysis(
         }
     }
 
-    let total = diffs.len() as u32;
-    storage::save_diffs(project_id, &diffs)?;
+    // Flush any remaining buffered diffs.
+    drop(push_diff);
+    if !diffs.is_empty() {
+        total_diffs += diffs.len() as u32;
+        storage::insert_diffs_batch(project_id, &diffs)?;
+        diffs.clear();
+    }
 
+    let total = total_diffs;
     let _ = app.emit(
         "diff-progress",
         serde_json::json!({

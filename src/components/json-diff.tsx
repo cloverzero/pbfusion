@@ -28,6 +28,7 @@ function cleanElement(el: OSMElement): Record<string, unknown> {
     timestamp: el.timestamp,
     user: el.user,
     changesetId: el.changeset_id,
+    visible: el.visible,
     tags: tagsArr.length > 0 ? Object.fromEntries(tagsArr.map((t) => [t.key, t.value])) : {},
   };
 

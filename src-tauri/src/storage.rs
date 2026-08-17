@@ -162,6 +162,18 @@ fn open_diff_db(project_id: u32) -> rusqlite::Result<Connection> {
 
 /// Insert all diffs in a single transaction. Used after diff analysis completes.
 pub fn save_diffs(project_id: u32, diffs: &[DiffItem]) -> rusqlite::Result<()> {
+    insert_diffs_batch(project_id, diffs)
+}
+
+/// Insert one batch of diffs in a single transaction.
+///
+/// Diff analysis may produce millions of entries; callers should flush in batches (e.g. every
+/// 10k entries) to keep the in-memory buffer bounded and spread write I/O across the scan.
+/// Batches are independent transactions, so a crash only loses the current batch.
+pub fn insert_diffs_batch(project_id: u32, batch: &[DiffItem]) -> rusqlite::Result<()> {
+    if batch.is_empty() {
+        return Ok(());
+    }
     let mut conn = open_diff_db(project_id)?;
     let tx = conn.transaction()?;
     {
@@ -170,7 +182,7 @@ pub fn save_diffs(project_id: u32, diffs: &[DiffItem]) -> rusqlite::Result<()> {
                 (id, element_type, element_id, diff_type, settlement, result, source_author, target_author)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         )?;
-        for d in diffs {
+        for d in batch {
             stmt.execute(params![
                 d.id,
                 element_type_str(d.element_type),
@@ -181,7 +193,8 @@ pub fn save_diffs(project_id: u32, diffs: &[DiffItem]) -> rusqlite::Result<()> {
                 d.source_author,
                 d.target_author,
             ])?;
-        }    }
+        }
+    }
     tx.commit()?;
     Ok(())
 }

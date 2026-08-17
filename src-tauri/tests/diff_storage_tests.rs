@@ -253,6 +253,60 @@ fn empty_filter_matches_all_and_load_all_orders_by_id() {
     });
 }
 
+#[test]
+fn batched_inserts_preserve_all_rows() {
+    with_isolated_home(|| {
+    // Simulate diff analysis flushing in batches (e.g. 10k at a time) across a large result.
+    let batch_size = 10_000usize;
+    let total_rows = 25_000u32;
+
+    for start in (1..=total_rows).step_by(batch_size) {
+        let end = (start + batch_size as u32 - 1).min(total_rows);
+        let batch: Vec<DiffItem> = (start..=end)
+            .map(|i| sample_diff(i, 9, ElementType::Node, i as i64, DiffType::Modified))
+            .collect();
+        pbfusion_lib::storage::insert_diffs_batch(9, &batch).expect("insert batch");
+    }
+
+    let all = pbfusion_lib::storage::load_all_diffs(9).expect("load all");
+    assert_eq!(all.len(), total_rows as usize);
+    // Ids remain contiguous and ordered across batches.
+    for (idx, d) in all.iter().enumerate() {
+        assert_eq!(d.id as usize, idx + 1);
+        assert_eq!(d.element_id, d.id as i64);
+    }
+
+    let count = pbfusion_lib::storage::count_diffs(
+        9,
+        &DiffFilter {
+            element_type: None,
+            diff_type: None,
+            only_unsettled: None,
+            element_id: None,
+        },
+    )
+    .expect("count");
+    assert_eq!(count, total_rows as i64);
+
+    // Empty batch is a no-op.
+    pbfusion_lib::storage::insert_diffs_batch(9, &[]).expect("empty batch ok");
+    let (_, total_after) = pbfusion_lib::storage::list_diffs_page(
+        9,
+        &DiffFilter {
+            element_type: None,
+            diff_type: None,
+            only_unsettled: None,
+            element_id: None,
+        },
+        100,
+        0,
+    )
+    .expect("page");
+    assert_eq!(total_after, total_rows as i64);
+
+    });
+}
+
 fn dirs_home() -> std::path::PathBuf {
     std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
 }
