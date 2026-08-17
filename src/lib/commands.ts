@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
-  Project, CreateProjectRequest, DiffItem, DiffFilter,
-  SettleDiffRequest, DiffDetail,
+  Project, CreateProjectRequest, DiffFilter,
+  SettleDiffRequest, DiffDetail, PagedDiffItems,
   AppSettings, UpdateSettingsRequest,
 } from "./types";
 
@@ -30,8 +30,15 @@ export async function deleteProject(id: number): Promise<void> {
 export async function listDiffs(
   projectId: number,
   filter?: DiffFilter,
-): Promise<DiffItem[]> {
-  return invoke("list_diffs", { projectId, filter: filter || null });
+  page = 1,
+  pageSize = 100,
+): Promise<PagedDiffItems> {
+  return invoke("list_diffs", {
+    projectId,
+    filter: filter || null,
+    page,
+    pageSize,
+  });
 }
 
 export async function settleDiff(
@@ -51,7 +58,8 @@ export async function getDiffDetail(
 
 // ── Merge ──
 
-export async function mergeExport(projectId: number): Promise<Project> {
+/** Starts the merge as a background task; progress arrives via `merge-progress` events. */
+export async function mergeExport(projectId: number): Promise<void> {
   return invoke("merge_export", { projectId });
 }
 

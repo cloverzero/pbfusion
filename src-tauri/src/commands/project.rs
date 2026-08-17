@@ -1,6 +1,8 @@
 use std::path::Path;
 
 use chrono::Utc;
+use tauri::Emitter;
+use crate::background::{BackgroundTaskKind, BackgroundTaskState};
 use crate::models::{CreateProjectRequest, ListParams, Project, ProjectStatus};
 use crate::storage;
 
@@ -43,6 +45,7 @@ pub fn delete_project(id: u32) -> Result<(), String> {
 pub async fn create_project(
     app: tauri::AppHandle,
     request: CreateProjectRequest,
+    state: tauri::State<'_, BackgroundTaskState>,
 ) -> Result<Project, String> {
     // Validate paths
     if !Path::new(&request.source_path).exists() {
@@ -77,16 +80,33 @@ pub async fn create_project(
     let source_path = request.source_path;
     let target_path = request.target_path;
     let project_id = next_id;
+    let project_name = project.name.clone();
+    let state_clone = state.inner().clone();
+    state.start(BackgroundTaskKind::DiffAnalysis, project_id, &project_name);
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = run_diff_analysis(app_handle, project_id, &source_path, &target_path).await
-        {
+        let result =
+            run_diff_analysis(app_handle.clone(), project_id, &source_path, &target_path).await;
+        state_clone.finish(BackgroundTaskKind::DiffAnalysis, project_id);
+        if let Err(e) = result {
             eprintln!("Diff analysis failed for project {}: {}", project_id, e);
             let projects = storage::load_projects().unwrap_or_default();
             if let Some(mut p) = projects.into_iter().find(|p| p.id == project_id) {
                 p.status = ProjectStatus::Failed;
                 p.updated_at = Utc::now();
                 let _ = storage::update_project(&p);
+                let _ = app_handle.emit(
+                    "project-updated",
+                    serde_json::json!({ "projectId": project_id }),
+                );
             }
+            let _ = app_handle.emit(
+                "diff-progress",
+                serde_json::json!({
+                    "projectId": project_id,
+                    "percent": 0.0,
+                    "status": "Failed"
+                }),
+            );
         }
     });
 

@@ -10,10 +10,11 @@ import {
   Target,
   Clock,
   Merge,
+  Loader2,
 } from "lucide-react";
 import { DiffsTab } from "@/components/diff-tab";
 import { getProject, mergeExport } from "@/lib/commands";
-import type { Project, ProjectUpdated } from "@/lib/types";
+import type { Project, ProjectUpdated, DiffProgress, MergeProgress } from "@/lib/types";
 
 // ── Helpers ──
 
@@ -80,6 +81,8 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [merging, setMerging] = useState(false);
+  const [analysisPercent, setAnalysisPercent] = useState<number | null>(null);
+  const [mergeProgress, setMergeProgress] = useState<MergeProgress | null>(null);
 
   const loadProject = useCallback(async () => {
     try {
@@ -105,16 +108,53 @@ export default function ProjectPage() {
     };
   }, [loadProject, projectId]);
 
+  // Listen for diff-analysis progress (Preparing stage).
+  useEffect(() => {
+    const unlisten = listen<DiffProgress>("diff-progress", (event) => {
+      if (event.payload.projectId !== projectId) return;
+      if (typeof event.payload.percent === "number") {
+        setAnalysisPercent(event.payload.percent);
+      }
+      if (event.payload.status === "InProgress" || event.payload.status === "Failed") {
+        setAnalysisPercent(null);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [projectId]);
+
+  // Listen for background merge progress.
+  useEffect(() => {
+    const unlisten = listen<MergeProgress>("merge-progress", (event) => {
+      if (event.payload.projectId !== projectId) return;
+      if (event.payload.status === "Completed" || event.payload.status === "Failed") {
+        setMerging(false);
+        setMergeProgress(null);
+        if (event.payload.status === "Failed") {
+          setError(event.payload.message || "Merge failed");
+        } else {
+          setError("");
+        }
+        loadProject();
+      } else {
+        setMergeProgress(event.payload);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [projectId, loadProject]);
+
   const handleMerge = async () => {
+    setError("");
+    setMergeProgress(null);
     setMerging(true);
     try {
-      const updated = await mergeExport(projectId);
-      setProject(updated);
-      setError("");
+      await mergeExport(projectId);
     } catch (e) {
-      setError(String(e));
-    } finally {
       setMerging(false);
+      setError(String(e));
     }
   };
 
@@ -206,15 +246,26 @@ export default function ProjectPage() {
             value={`${pct}%`}
             color="text-purple-600 dark:text-purple-400"
           />
-          <Button
-            size="sm"
-            disabled={unsettled > 0 || merging}
-            onClick={handleMerge}
-            className="gap-1.5"
-          >
-            <Merge className="h-4 w-4" />
-            {merging ? "Merging…" : "Merge"}
-          </Button>
+          {merging ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span className="text-sm font-medium tabular-nums">
+                {mergeProgress
+                  ? `${Math.round(mergeProgress.percent)}%`
+                  : "Starting…"}
+              </span>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              disabled={unsettled > 0}
+              onClick={handleMerge}
+              className="gap-1.5"
+            >
+              <Merge className="h-4 w-4" />
+              Merge
+            </Button>
+          )}
         </div>
       </div>
 
@@ -247,11 +298,52 @@ export default function ProjectPage() {
           </span>
         </div>
 
+        {/* Merge progress (background task) */}
+        {merging && mergeProgress && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-primary h-full rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, mergeProgress.percent)}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+                {Math.round(mergeProgress.percent)}%
+              </span>
+            </div>
+            {typeof mergeProgress.processedDiffs === "number" &&
+              typeof mergeProgress.totalDiffs === "number" && (
+                <p className="text-xs text-muted-foreground">
+                  Merging… {mergeProgress.processedDiffs}/{mergeProgress.totalDiffs} diffs
+                  processed
+                </p>
+              )}
+          </div>
+        )}
+
         {/* Status-specific message */}
         {project.status === "Preparing" && (
-          <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
-            <Clock className="h-4 w-4 animate-spin" />
-            Diff analysis in progress — comparing source and target PBF files...
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+              <Clock className="h-4 w-4 animate-spin" />
+              {analysisPercent !== null
+                ? `Diff analysis in progress — ${Math.round(analysisPercent)}%`
+                : "Diff analysis in progress — comparing source and target PBF files..."}
+            </div>
+            {analysisPercent !== null && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-yellow-500 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${analysisPercent}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+                  {Math.round(analysisPercent)}%
+                </span>
+              </div>
+            )}
           </div>
         )}
         {project.status === "Completed" && (

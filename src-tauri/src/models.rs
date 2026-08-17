@@ -45,6 +45,10 @@ pub struct DiffItem {
     pub diff_type: DiffType,
     pub settlement: Option<Settlement>,
     pub result: Option<String>,
+    /// Author (OSM user name) of the element in the source PBF, when present.
+    pub source_author: Option<String>,
+    /// Author (OSM user name) of the element in the target PBF, when present.
+    pub target_author: Option<String>,
 }
 
 impl DiffItem {
@@ -85,14 +89,14 @@ impl ElementType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum DiffType {
     Added,
     Removed,
     Modified,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum Settlement {
     Source,
     Target,
@@ -129,6 +133,14 @@ pub struct DiffFilter {
     pub diff_type: Option<String>,
     pub only_unsettled: Option<bool>,
     pub element_id: Option<i64>,
+}
+
+/// Pagination params for diff listing
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageParams {
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
 }
 
 /// Request to settle a diff
