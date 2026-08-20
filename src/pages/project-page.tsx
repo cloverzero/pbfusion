@@ -192,7 +192,7 @@ export default function ProjectPage() {
   const pct = progressPct(project.totalDiffs, project.settledDiffs);
 
   return (
-    <div className="mx-8 py-6 flex flex-col flex-1 min-h-0">
+    <div className="mx-8 py-2 flex flex-col flex-1 h-screen">
       {/* ── Header + Stats Row ── */}
       <div className="flex items-start justify-between mb-3">
         {/* Left: title + badge + date */}
@@ -221,51 +221,66 @@ export default function ProjectPage() {
         </div>
 
         {/* Right: compact stats + merge action */}
-        <div className="flex items-center gap-6 pr-2">
-          <MiniStat
-            icon={GitBranch}
-            label="Total"
-            value={project.totalDiffs}
-            color="text-blue-600 dark:text-blue-400"
-          />
-          <MiniStat
-            icon={CheckCircle}
-            label="Settled"
-            value={project.settledDiffs}
-            color="text-green-600 dark:text-green-400"
-          />
-          <MiniStat
-            icon={AlertCircle}
-            label="Unsettled"
-            value={unsettled}
-            color="text-orange-600 dark:text-orange-400"
-          />
-          <MiniStat
-            icon={Target}
-            label="Progress"
-            value={`${pct}%`}
-            color="text-purple-600 dark:text-purple-400"
-          />
-          {merging ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="text-sm font-medium tabular-nums">
-                {mergeProgress
-                  ? `${Math.round(mergeProgress.percent)}%`
-                  : "Starting…"}
+        <div>
+          <div className="flex items-center gap-6 pr-2">
+            <MiniStat
+              icon={GitBranch}
+              label="Total"
+              value={project.totalDiffs}
+              color="text-blue-600 dark:text-blue-400"
+            />
+            <MiniStat
+              icon={CheckCircle}
+              label="Settled"
+              value={project.settledDiffs}
+              color="text-green-600 dark:text-green-400"
+            />
+            <MiniStat
+              icon={AlertCircle}
+              label="Unsettled"
+              value={unsettled}
+              color="text-orange-600 dark:text-orange-400"
+            />
+            <MiniStat
+              icon={Target}
+              label="Progress"
+              value={`${pct}%`}
+              color="text-purple-600 dark:text-purple-400"
+            />
+            {merging ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm font-medium tabular-nums">
+                  {mergeProgress
+                    ? `${Math.round(mergeProgress.percent)}%`
+                    : "Starting…"}
+                </span>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                disabled={unsettled > 0}
+                onClick={handleMerge}
+                className="gap-1.5"
+              >
+                <Merge className="h-4 w-4" />
+                Merge
+              </Button>
+            )}
+          </div>
+          <div className="mt-2 pr-2">
+            {/* File paths */}
+            <div className="flex justify-end gap-6 text-xs text-muted-foreground">
+              <span className="truncate max-w-[45%]" title={project.sourcePath}>
+                <span className="font-medium text-foreground/70">Source:</span>{" "}
+                {fileName(project.sourcePath)}
+              </span>
+              <span className="truncate max-w-[45%]" title={project.targetPath}>
+                <span className="font-medium text-foreground/70">Target:</span>{" "}
+                {fileName(project.targetPath)}
               </span>
             </div>
-          ) : (
-            <Button
-              size="sm"
-              disabled={unsettled > 0}
-              onClick={handleMerge}
-              className="gap-1.5"
-            >
-              <Merge className="h-4 w-4" />
-              Merge
-            </Button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -285,18 +300,6 @@ export default function ProjectPage() {
             </span>
           </div>
         )}
-
-        {/* File paths */}
-        <div className="flex gap-6 text-xs text-muted-foreground">
-          <span className="truncate max-w-[45%]" title={project.sourcePath}>
-            <span className="font-medium text-foreground/70">Source:</span>{" "}
-            {fileName(project.sourcePath)}
-          </span>
-          <span className="truncate max-w-[45%]" title={project.targetPath}>
-            <span className="font-medium text-foreground/70">Target:</span>{" "}
-            {fileName(project.targetPath)}
-          </span>
-        </div>
 
         {/* Merge progress (background task) */}
         {merging && mergeProgress && (

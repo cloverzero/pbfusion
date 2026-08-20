@@ -128,128 +128,124 @@ export function DiffsTab({ projectId }: { projectId: number }) {
   return (
     <div className="flex flex-col gap-4 flex-1">
       {/* Filter Toolbar */}
-      <Card>
-        <CardContent className="py-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+      <div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
 
-            <div className="relative w-40">
-              <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Element ID"
-                className="pl-7 h-8 text-sm"
-                value={filter.elementId ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  updateFilter("elementId", v ? Number(v) : undefined);
-                }}
-                type="number"
-              />
-            </div>
-
-            <Select
-              value={filter.elementType ?? "all"}
-              onValueChange={(v) => updateFilter("elementType", v === "all" ? undefined : v)}
-            >
-              <SelectTrigger className="w-32 h-8 text-sm">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="node">Node</SelectItem>
-                <SelectItem value="way">Way</SelectItem>
-                <SelectItem value="relation">Relation</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filter.diffType ?? "all"}
-              onValueChange={(v) => updateFilter("diffType", v === "all" ? undefined : v)}
-            >
-              <SelectTrigger className="w-36 h-8 text-sm">
-                <SelectValue placeholder="Diff" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Diffs</SelectItem>
-                <SelectItem value="added">Added</SelectItem>
-                <SelectItem value="removed">Removed</SelectItem>
-                <SelectItem value="modified">Modified</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center gap-2">
-              <Switch
-                id="unsettled"
-                checked={!!filter.onlyUnsettled}
-                onCheckedChange={(v) => updateFilter("onlyUnsettled", v || undefined)}
-              />
-              <Label htmlFor="unsettled" className="text-sm cursor-pointer">Unsettled only</Label>
-            </div>
-
-            <div className="ml-auto text-sm text-muted-foreground">
-              {total} diffs · {unsettled} unsettled on this page
-            </div>
+          <div className="relative w-40">
+            <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Element ID"
+              className="pl-7 h-8 text-sm"
+              value={filter.elementId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                updateFilter("elementId", v ? Number(v) : undefined);
+              }}
+              type="number"
+            />
           </div>
-        </CardContent>
-      </Card>
+
+          <Select
+            value={filter.elementType ?? "all"}
+            onValueChange={(v) => updateFilter("elementType", v === "all" ? undefined : v)}
+          >
+            <SelectTrigger className="w-32 h-8 text-sm">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="node">Node</SelectItem>
+              <SelectItem value="way">Way</SelectItem>
+              <SelectItem value="relation">Relation</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filter.diffType ?? "all"}
+            onValueChange={(v) => updateFilter("diffType", v === "all" ? undefined : v)}
+          >
+            <SelectTrigger className="w-36 h-8 text-sm">
+              <SelectValue placeholder="Diff" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Diffs</SelectItem>
+              <SelectItem value="added">Added</SelectItem>
+              <SelectItem value="removed">Removed</SelectItem>
+              <SelectItem value="modified">Modified</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              id="unsettled"
+              checked={!!filter.onlyUnsettled}
+              onCheckedChange={(v) => updateFilter("onlyUnsettled", v || undefined)}
+            />
+            <Label htmlFor="unsettled" className="text-sm cursor-pointer">Unsettled only</Label>
+          </div>
+        </div>
+      </div>
 
       {/* Diff Table + Detail Panel */}
-      <div className="flex gap-0 flex-1 min-h-0">
+      <div className="flex gap-0 flex-1 overflow-hidden">
         {/* Diff List */}
-        <div className={`flex-1 min-w-0 overflow-auto ${selectedDiffId ? "hidden xl:block xl:max-w-[35%]" : ""}`}>
+        <div className={`flex flex-col flex-1 min-w-0 overflow-auto ${selectedDiffId ? "hidden xl:block xl:max-w-[35%]" : ""}`}>
           {diffs.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Filter className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p>No diffs match the current filters</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Type</TableHead>
-                  <TableHead>Element ID</TableHead>
-                  <TableHead className="w-[120px]">Source Author</TableHead>
-                  <TableHead className="w-[120px]">Target Author</TableHead>
-                  <TableHead className="w-[100px]">Diff</TableHead>
-                  <TableHead className="w-[110px]">Settlement</TableHead>
-                  <TableHead className="w-[80px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {diffs.map((d) => (
-                  <TableRow
-                    key={d.id}
-                    data-state={d.id === selectedDiffId ? "selected" : undefined}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedDiffId(d.id === selectedDiffId ? null : d.id)}
-                  >
-                    <TableCell className="font-mono text-xs">{d.elementType}</TableCell>
-                    <TableCell className="font-mono text-xs">{d.elementId}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[120px]">
-                      {d.sourceAuthor ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-xs truncate max-w-[120px]">
-                      {d.targetAuthor ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${diffTypeColor(d.diffType)}`}>
-                        {d.diffType}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${settlementColor(d.settlement)}`}>
-                        {settlementLabel(d.settlement)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {d.id === selectedDiffId ? "Close" : "Review →"}
-                      </span>
-                    </TableCell>
+            <div className="flex-1 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">Type</TableHead>
+                    <TableHead>Element ID</TableHead>
+                    <TableHead className="w-[120px]">Source Author</TableHead>
+                    <TableHead className="w-[120px]">Target Author</TableHead>
+                    <TableHead className="w-[100px]">Diff</TableHead>
+                    <TableHead className="w-[110px]">Settlement</TableHead>
+                    <TableHead className="w-[80px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {diffs.map((d) => (
+                    <TableRow
+                      key={d.id}
+                      data-state={d.id === selectedDiffId ? "selected" : undefined}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedDiffId(d.id === selectedDiffId ? null : d.id)}
+                    >
+                      <TableCell className="font-mono text-xs">{d.elementType}</TableCell>
+                      <TableCell className="font-mono text-xs">{d.elementId}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[120px]">
+                        {d.sourceAuthor ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-xs truncate max-w-[120px]">
+                        {d.targetAuthor ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${diffTypeColor(d.diffType)}`}>
+                          {d.diffType}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${settlementColor(d.settlement)}`}>
+                          {settlementLabel(d.settlement)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {d.id === selectedDiffId ? "Close" : "Review →"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Pagination */}
@@ -392,9 +388,9 @@ function DiffDetailPanel({
   }
 
   return (
-    <div className="flex-1 min-w-0 border-l bg-background flex flex-col max-h-[calc(100vh-220px)] overflow-hidden">
+    <div className="flex-1 min-w-0 bg-background flex flex-col overflow-hidden">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+      <div className="flex items-center justify-between px-2 border-b shrink-0">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
