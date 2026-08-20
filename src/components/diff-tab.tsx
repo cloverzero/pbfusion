@@ -12,7 +12,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -126,7 +125,7 @@ export function DiffsTab({ projectId }: { projectId: number }) {
   const unsettled = diffs.filter((d) => !d.settlement).length;
 
   return (
-    <div className="flex flex-col gap-4 flex-1">
+    <div className="flex flex-col gap-4 flex-1 min-h-0">
       {/* Filter Toolbar */}
       <div>
         <div className="flex flex-wrap items-center gap-3">
@@ -188,9 +187,9 @@ export function DiffsTab({ projectId }: { projectId: number }) {
       </div>
 
       {/* Diff Table + Detail Panel */}
-      <div className="flex gap-0 flex-1 overflow-hidden">
+      <div className="flex gap-1 flex-1 min-h-0 bg-muted">
         {/* Diff List */}
-        <div className={`flex flex-col flex-1 min-w-0 overflow-auto ${selectedDiffId ? "hidden xl:block xl:max-w-[35%]" : ""}`}>
+        <div className={`flex flex-col flex-1 min-w-0 bg-background ${selectedDiffId ? "hidden xl:flex xl:max-w-[40%]" : ""}`}>
           {diffs.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Filter className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -388,9 +387,9 @@ function DiffDetailPanel({
   }
 
   return (
-    <div className="flex-1 min-w-0 bg-background flex flex-col overflow-hidden">
+    <div className="flex-1 min-w-0 bg-background flex flex-col">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-2 border-b shrink-0">
+      <div className="flex items-center justify-between px-2 py-0.5 border-b shrink-0">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
@@ -454,7 +453,7 @@ function DiffDetailPanel({
       </div>
 
       {/* ── Actions Footer ── */}
-      <div className="border-t p-3 flex gap-2 shrink-0">
+      <div className="border-t p-2 flex gap-2 shrink-0">
         <Button
           variant="outline"
           className="flex-1 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400"

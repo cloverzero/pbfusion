@@ -192,9 +192,9 @@ export default function ProjectPage() {
   const pct = progressPct(project.totalDiffs, project.settledDiffs);
 
   return (
-    <div className="mx-8 py-2 flex flex-col flex-1 h-screen">
+    <div className="ml-4 flex flex-col flex-1 h-screen">
       {/* ── Header + Stats Row ── */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-3 mr-4">
         {/* Left: title + badge + date */}
         <div>
           <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export default function ProjectPage() {
 
         {/* Right: compact stats + merge action */}
         <div>
-          <div className="flex items-center gap-6 pr-2">
+          <div className="flex items-center gap-6">
             <MiniStat
               icon={GitBranch}
               label="Total"
@@ -268,7 +268,7 @@ export default function ProjectPage() {
               </Button>
             )}
           </div>
-          <div className="mt-2 pr-2">
+          <div className="mt-2">
             {/* File paths */}
             <div className="flex justify-end gap-6 text-xs text-muted-foreground">
               <span className="truncate max-w-[45%]" title={project.sourcePath}>
@@ -285,7 +285,7 @@ export default function ProjectPage() {
       </div>
 
       {/* ── Progress + File Info Row ── */}
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 mr-4 space-y-2">
         {/* Progress bar */}
         {project.totalDiffs > 0 && (
           <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ export default function ProjectPage() {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+            <span className="text-xs text-muted-foreground tabular-nums text-right">
               {pct}%
             </span>
           </div>
