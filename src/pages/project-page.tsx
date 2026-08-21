@@ -192,7 +192,7 @@ export default function ProjectPage() {
   const pct = progressPct(project.totalDiffs, project.settledDiffs);
 
   return (
-    <div className="ml-4 flex flex-col flex-1 h-screen">
+    <div className="ml-4 pt-3 flex flex-col flex-1 h-screen">
       {/* ── Header + Stats Row ── */}
       <div className="flex items-start justify-between mb-3 mr-4">
         {/* Left: title + badge + date */}
