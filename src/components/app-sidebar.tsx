@@ -7,6 +7,7 @@ import {
   IconEqualNot,
   IconHelp,
   IconLayoutDashboard,
+  IconHome,
 } from "@tabler/icons-react";
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -34,8 +35,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const items: NavItem[] = [
     {
-      title: "Projects",
+      title: "Home",
       url: "/",
+      icon: IconHome,
+    },
+    {
+      title: "Projects",
+      url: "/projects",
       icon: IconFolder,
     },
   ];
